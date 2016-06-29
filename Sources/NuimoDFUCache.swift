@@ -33,7 +33,7 @@ public class NuimoDFUCache {
                             return lhs > rhs
                         }
                     guard updates.count > 0 else {
-                        strongSelf.delegate?.nuimoDFUCache(strongSelf, didFailRetrievingFirmwareUpdatesWithError: NSError(domain: "NuimoDFUCache", code: 1, userInfo: [NSLocalizedDescriptionKey: "Cannot retrieve firmware updates", NSLocalizedFailureReasonErrorKey: "The list of updates is empty"]))
+                        strongSelf.delegate?.nuimoDFUCache(strongSelf, didFailRetrievingFirmwareUpdatesWithError: NSError(domain: "NuimoDFUCache", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cannot retrieve firmware updates", NSLocalizedFailureReasonErrorKey: "The list of updates is empty"]))
                         return
                     }
                     strongSelf.firmwareUpates = updates
