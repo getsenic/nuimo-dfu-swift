@@ -82,7 +82,7 @@ extension NuimoDFUViewModel: NuimoDFUManagerDelegate {
     func nuimoDFUManager(manager: NuimoDFUManager, didChangeState state: NuimoDFUState) {
         switch state {
         case .Completed: step = .Success
-        case .Aborted:   didFailWithError(NSError(domain: "Nuimo", code: 101, userInfo: [NSLocalizedDescriptionKey: "Firmware upload aborted", NSLocalizedDescriptionKey: "Aborted by user"]))
+        case .Aborted:   didFailWithError(NSError(domain: "Nuimo", code: 101, userInfo: [NSLocalizedDescriptionKey: "Firmware upload aborted", NSLocalizedFailureReasonErrorKey: "Aborted by user"]))
         default:         delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(state.description)...")
         }
     }
