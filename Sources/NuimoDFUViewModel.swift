@@ -61,7 +61,7 @@ public class NuimoDFUViewModel: NSObject {
 
     private func didFailWithError(error: NSError) {
         step = .Error
-        delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(error.localizedDescription)\n\(error.localizedFailureReason)")
+        delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(error.localizedDescription)\n\(error.localizedFailureReason ?? "")")
     }
 }
 
@@ -74,12 +74,12 @@ public class NuimoDFUViewModel: NSObject {
 }
 
 extension NuimoDFUViewModel: NuimoDFUManagerDelegate {
-    func nuimoDFUManager(manager: NuimoDFUManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController) {
+    public func nuimoDFUManager(manager: NuimoDFUManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController) {
         manager.stopDiscovery()
         startUpdateForNuimoController(controller)
     }
 
-    func nuimoDFUManager(manager: NuimoDFUManager, didChangeState state: NuimoDFUState) {
+    public func nuimoDFUManager(manager: NuimoDFUManager, didChangeState state: NuimoDFUState) {
         switch state {
         case .Completed: step = .Success
         case .Aborted:   didFailWithError(NSError(domain: "Nuimo", code: 101, userInfo: [NSLocalizedDescriptionKey: "Firmware upload aborted", NSLocalizedFailureReasonErrorKey: "Aborted by user"]))
@@ -87,19 +87,19 @@ extension NuimoDFUViewModel: NuimoDFUManagerDelegate {
         }
     }
 
-    func nuimoDFUManager(manager: NuimoDFUManager, didUpdateProgress progress: Float, forPartIndex partIndex: Int, ofPartsCount partsCount: Int) {
+    public func nuimoDFUManager(manager: NuimoDFUManager, didUpdateProgress progress: Float, forPartIndex partIndex: Int, ofPartsCount partsCount: Int) {
         delegate?.nuimoDFUViewModel(self, didUpdateFlashProgress: Double(progress))
     }
 
-    func nuimoDFUManager(manager: NuimoDFUManager, didFailDownloadingFirmwareWithError error: NSError) {
+    public func nuimoDFUManager(manager: NuimoDFUManager, didFailDownloadingFirmwareWithError error: NSError) {
         didFailWithError(error)
     }
 
-    func nuimoDFUManagerDidFailStartingFirmwareUpload(manager: NuimoDFUManager) {
+    public func nuimoDFUManagerDidFailStartingFirmwareUpload(manager: NuimoDFUManager) {
         didFailWithError(NSError(domain: "Nuimo", code: 102, userInfo: [NSLocalizedDescriptionKey: "Cannot start firmware upload", NSLocalizedFailureReasonErrorKey: "Unknown"]))
     }
 
-    func nuimoDFUManager(manager: NuimoDFUManager, didFailFlashingFirmwareWithError error: NSError) {
+    public func nuimoDFUManager(manager: NuimoDFUManager, didFailFlashingFirmwareWithError error: NSError) {
         didFailWithError(error)
     }
 }

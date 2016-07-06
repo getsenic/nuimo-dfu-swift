@@ -12,22 +12,28 @@ import iOSDFULibrary
 import NuimoSwift
 import Then
 
-class NuimoDFUManager {
-    weak var delegate: NuimoDFUManagerDelegate?
+public class NuimoDFUManager {
+    public weak var delegate: NuimoDFUManagerDelegate?
+
+    public private(set) var discoveredControllers: Set<NuimoDFUBluetoothController> = []
 
     private var peripheralIdentifier = ""
     private lazy var discovery: NuimoDiscoveryManager = NuimoDiscoveryManager(delegate: self, options: [CBCentralManagerScanOptionAllowDuplicatesKey: true, NuimoDiscoveryManagerAdditionalDiscoverServiceUUIDsKey: [CBUUID(string: "00001530-1212-EFDE-1523-785FEABCD123")]])
     private var dfuController: DFUServiceController?
 
-    func startDiscovery() {
-        discovery.startDiscovery()
+    public init(delegate: NuimoDFUManagerDelegate? = nil) {
+        self.delegate = delegate
     }
 
-    func stopDiscovery() {
+    public func startDiscovery() {
+        discovery.startDiscovery(true)
+    }
+
+    public func stopDiscovery() {
         discovery.stopDiscovery()
     }
 
-    func startUpdateForNuimoController(controller: NuimoDFUBluetoothController) {
+    public func startUpdateForNuimoController(controller: NuimoDFUBluetoothController) {
         let localFirmwareFilename = String(format: "%@_%@", NSProcessInfo.processInfo().globallyUniqueString, "nf.zip")
         let localFirmwareFileURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).URLByAppendingPathComponent(localFirmwareFilename)
 
@@ -46,7 +52,7 @@ class NuimoDFUManager {
             }
     }
 
-    func cancelUpdate() {
+    public func cancelUpdate() {
         dfuController?.abort()
     }
 
@@ -67,46 +73,57 @@ class NuimoDFUManager {
 }
 
 extension NuimoDFUManager: NuimoDiscoveryDelegate {
-    @objc func nuimoDiscoveryManager(discovery: NuimoDiscoveryManager, deviceForPeripheral peripheral: CBPeripheral) -> BLEDevice? {
+    @objc public func nuimoDiscoveryManager(discovery: NuimoDiscoveryManager, deviceForPeripheral peripheral: CBPeripheral) -> BLEDevice? {
         guard peripheral.name == "NuimoDFU" else { return nil }
-        return NuimoDFUBluetoothController(centralManager: discovery.centralManager, uuid: peripheral.identifier.UUIDString, peripheral: peripheral)
+        return NuimoDFUBluetoothController(discoveryManager: discovery.bleDiscovery, uuid: peripheral.identifier.UUIDString, peripheral: peripheral)
     }
 
-    @objc func nuimoDiscoveryManager(discovery: NuimoDiscoveryManager, didDiscoverNuimoController controller: NuimoController) {
-        print("Found DFU \(controller.uuid)")
+    @objc public func nuimoDiscoveryManager(discovery: NuimoDiscoveryManager, didDiscoverNuimoController controller: NuimoController) {
         guard let controller = controller as? NuimoDFUBluetoothController else { return }
+        controller.delegate = self
+        discoveredControllers.insert(controller)
         delegate?.nuimoDFUManager(self, didDisoverNuimoDFUController: controller)
     }
 }
 
+extension NuimoDFUManager: NuimoControllerDelegate {
+    @objc public func nuimoController(controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: NSError?) {
+        guard let controller = controller as? NuimoDFUBluetoothController else { return }
+        if state == .Invalidated {
+            discoveredControllers.remove(controller)
+            delegate?.nuimoDFUManager(self, didInvalidateNuimoDFUController: controller)
+        }
+    }
+}
+
 extension NuimoDFUManager: DFUServiceDelegate {
-    @objc func didStateChangedTo(state: State) {
+    @objc public func didStateChangedTo(state: State) {
         delegate?.nuimoDFUManager(self, didChangeState: NuimoDFUState(state: state))
     }
 
-    @objc func didErrorOccur(error: DFUError, withMessage message: String) {
+    @objc public func didErrorOccur(error: DFUError, withMessage message: String) {
         delegate?.nuimoDFUManager(self, didFailFlashingFirmwareWithError: NSError(domain: "NuimoDFUManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Update aborted", NSLocalizedFailureReasonErrorKey: message]))
     }
 }
 
 extension NuimoDFUManager: DFUProgressDelegate {
-    @objc func onUploadProgress(part: Int, totalParts: Int, progress: Int, currentSpeedBytesPerSecond: Double, avgSpeedBytesPerSecond: Double) {
-        //TODO: Notify delegate
-        print("DFU Progress", part, totalParts, progress)
+    @objc public func onUploadProgress(part: Int, totalParts: Int, progress: Int, currentSpeedBytesPerSecond: Double, avgSpeedBytesPerSecond: Double) {
         delegate?.nuimoDFUManager(self, didUpdateProgress: Float(progress) / 100.0, forPartIndex: part - 1, ofPartsCount: totalParts)
     }
 }
 
+//TODO: http://marginalfutility.net/2015/10/11/swift-compiler-flags/
 #if DEBUG
 extension NuimoDFUManager: LoggerDelegate {
-    @objc func logWith(level: LogLevel, message: String) {
+    @objc public func logWith(level: LogLevel, message: String) {
         print("DFU", level.rawValue, message)
     }
 }
 #endif
 
-protocol NuimoDFUManagerDelegate: class {
+public protocol NuimoDFUManagerDelegate: class {
     func nuimoDFUManager(manager: NuimoDFUManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController)
+    func nuimoDFUManager(manager: NuimoDFUManager, didInvalidateNuimoDFUController controller: NuimoDFUBluetoothController)
     func nuimoDFUManager(manager: NuimoDFUManager, didChangeState state: NuimoDFUState)
     func nuimoDFUManager(manager: NuimoDFUManager, didUpdateProgress progress: Float, forPartIndex partIndex: Int, ofPartsCount partsCount: Int)
     func nuimoDFUManager(manager: NuimoDFUManager, didFailDownloadingFirmwareWithError error: NSError)
@@ -114,8 +131,9 @@ protocol NuimoDFUManagerDelegate: class {
     func nuimoDFUManager(manager: NuimoDFUManager, didFailFlashingFirmwareWithError error: NSError)
 }
 
-extension NuimoDFUManagerDelegate {
+public extension NuimoDFUManagerDelegate {
     func nuimoDFUManager(manager: NuimoDFUManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController) {}
+    func nuimoDFUManager(manager: NuimoDFUManager, didInvalidateNuimoDFUController controller: NuimoDFUBluetoothController) {}
     func nuimoDFUManager(manager: NuimoDFUManager, didChangeState state: NuimoDFUState) {}
     func nuimoDFUManager(manager: NuimoDFUManager, didUpdateProgress progress: Float, forPartIndex partIndex: Int, ofPartsCount partsCount: Int) {}
     func nuimoDFUManager(manager: NuimoDFUManager, didFailDownloadingFirmwareWithError error: NSError) {}
@@ -123,17 +141,17 @@ extension NuimoDFUManagerDelegate {
     func nuimoDFUManager(manager: NuimoDFUManager, didFailFlashingFirmwareWithError error: NSError) {}
 }
 
-class NuimoDFUBluetoothController: NuimoBluetoothController {
-    override var serviceUUIDs:                    [CBUUID]            { return [] }
-    override var charactericUUIDsForServiceUUID:  [CBUUID : [CBUUID]] { return [:] }
-    override var notificationCharacteristicUUIDs: [CBUUID]            { return [] }
+public class NuimoDFUBluetoothController: NuimoBluetoothController {
+    override public var serviceUUIDs:                    [CBUUID]            { return [] }
+    override public var charactericUUIDsForServiceUUID:  [CBUUID : [CBUUID]] { return [:] }
+    override public var notificationCharacteristicUUIDs: [CBUUID]            { return [] }
 
-    override func connect() -> Bool {
+    override public func connect() -> Bool {
         return false
     }
 }
 
-enum NuimoDFUState {
+public enum NuimoDFUState {
     case Connecting
     case Starting
     case EnablingDfuMode
