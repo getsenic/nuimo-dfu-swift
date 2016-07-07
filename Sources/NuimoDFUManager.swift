@@ -33,12 +33,12 @@ public class NuimoDFUManager {
         discovery.stopDiscovery()
     }
 
-    public func startUpdateForNuimoController(controller: NuimoDFUBluetoothController) {
+    public func startUpdateForNuimoController(controller: NuimoDFUBluetoothController, withUpdateURL URL: NSURL) {
         let localFirmwareFilename = String(format: "%@_%@", NSProcessInfo.processInfo().globallyUniqueString, "nf.zip")
         let localFirmwareFileURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).URLByAppendingPathComponent(localFirmwareFilename)
 
         Alamofire
-            .download(.GET, "https://www.senic.com/files/nuimo-firmware-2-1-0.zip", destination: { _ in return localFirmwareFileURL })
+            .download(.GET, URL.absoluteString, destination: { _ in return localFirmwareFileURL })
             .response{ [weak self] (_, _, _, error) in
                 guard let strongSelf = self else { return }
                 if let error = error {
