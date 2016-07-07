@@ -38,6 +38,7 @@ public class NuimoDFUCache {
                     }
                     strongSelf.firmwareUpates = updates
                     strongSelf.delegate?.nuimoDFUCacheDidUpdate(strongSelf)
+                    NSNotificationCenter.defaultCenter().postNotificationName(NuimoDFUCacheDidRequestFirmwareUpdates, object: self)
                 case .Failure(let error):
                     strongSelf.delegate?.nuimoDFUCache(strongSelf, didFailRetrievingFirmwareUpdatesWithError: error)
                 }
@@ -106,3 +107,5 @@ public func ==(lhs: NuimoFirmwareVersion, rhs: NuimoFirmwareVersion) -> Bool {
 public func <(lhs: NuimoFirmwareVersion, rhs: NuimoFirmwareVersion) -> Bool {
     return !(lhs == rhs) && !(lhs > rhs)
 }
+
+public let NuimoDFUCacheDidRequestFirmwareUpdates = "NuimoDFUCacheDidRequestFirmwareUpdates"
