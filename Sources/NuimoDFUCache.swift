@@ -62,7 +62,7 @@ public struct NuimoFirmwareVersion {
 
     public init?(string: String) {
         let tokens = string.componentsSeparatedByString(".")
-        guard tokens.count == 3 else { return nil }
+        guard tokens.count >= 3 else { return nil }
         guard let major = Int(tokens[0]), minor = Int(tokens[1]), patch = Int(tokens[2]) where major >= 0 && minor >= 0 && patch >= 0 else { return nil }
         self.major = major
         self.minor = minor
