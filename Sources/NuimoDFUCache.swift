@@ -16,8 +16,12 @@ public class NuimoDFUCache {
     public var latestFirmwareUpdate: NuimoFirmwareUpdate? { return firmwareUpates.first }
 
     public func requestFirmwareUpdates() {
+        let request = NSMutableURLRequest(URL: NSURL(string: "https://www.senic.com/files/nuimo-firmware-updates.json")!)
+        request.HTTPMethod  = "GET"
+        request.cachePolicy = NSURLRequestCachePolicy.ReloadIgnoringCacheData
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         Alamofire
-            .request(.GET, "https://www.senic.com/files/nuimo-firmware-updates.json", parameters: nil, encoding: .JSON)
+            .request(request)
             .responseJSON { [weak self] response in
                 guard let strongSelf = self else { return }
                 switch response.result {
