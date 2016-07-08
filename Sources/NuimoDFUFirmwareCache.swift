@@ -8,10 +8,10 @@
 
 import Alamofire
 
-public class NuimoDFUCache {
-    public static let sharedCache = NuimoDFUCache()
+public class NuimoDFUFirmwareCache {
+    public static let sharedCache = NuimoDFUFirmwareCache()
 
-    public weak var delegate: NuimoDFUCacheDelegate?
+    public weak var delegate: NuimoDFUFirmwareCacheDelegate?
     public private(set) var firmwareUpates: [NuimoFirmwareUpdate] = []
     public var latestFirmwareUpdate: NuimoFirmwareUpdate? { return firmwareUpates.first }
 
@@ -27,7 +27,7 @@ public class NuimoDFUCache {
                 switch response.result {
                 case .Success(let json):
                     guard let jsonUpdates = (json["updates"] as? Array<Dictionary<String, String>>) else {
-                        strongSelf.delegate?.nuimoDFUCache(strongSelf, didFailRetrievingFirmwareUpdatesWithError: NSError(domain: "NuimoDFUCache", code: 1, userInfo: [NSLocalizedDescriptionKey: "Cannot retrieve firmware updates", NSLocalizedFailureReasonErrorKey: "The update meta file is invalid"]))
+                        strongSelf.delegate?.nuimoDFUFirmwareCache(strongSelf, didFailRetrievingFirmwareUpdatesWithError: NSError(domain: "NuimoDFUCache", code: 1, userInfo: [NSLocalizedDescriptionKey: "Cannot retrieve firmware updates", NSLocalizedFailureReasonErrorKey: "The update meta file is invalid"]))
                         return
                     }
                     let updates: [NuimoFirmwareUpdate] = jsonUpdates
@@ -37,22 +37,22 @@ public class NuimoDFUCache {
                             return lhs > rhs
                         }
                     guard updates.count > 0 else {
-                        strongSelf.delegate?.nuimoDFUCache(strongSelf, didFailRetrievingFirmwareUpdatesWithError: NSError(domain: "NuimoDFUCache", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cannot retrieve firmware updates", NSLocalizedFailureReasonErrorKey: "The list of updates is empty"]))
+                        strongSelf.delegate?.nuimoDFUFirmwareCache(strongSelf, didFailRetrievingFirmwareUpdatesWithError: NSError(domain: "NuimoDFUCache", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cannot retrieve firmware updates", NSLocalizedFailureReasonErrorKey: "The list of updates is empty"]))
                         return
                     }
                     strongSelf.firmwareUpates = updates
-                    strongSelf.delegate?.nuimoDFUCacheDidUpdate(strongSelf)
-                    NSNotificationCenter.defaultCenter().postNotificationName(NuimoDFUCacheDidRequestFirmwareUpdates, object: self)
+                    strongSelf.delegate?.nuimoDFUFirmwareCacheDidUpdate(strongSelf)
+                    NSNotificationCenter.defaultCenter().postNotificationName(NuimoDFUFirmwareCacheDidRequestFirmwareUpdates, object: self)
                 case .Failure(let error):
-                    strongSelf.delegate?.nuimoDFUCache(strongSelf, didFailRetrievingFirmwareUpdatesWithError: error)
+                    strongSelf.delegate?.nuimoDFUFirmwareCache(strongSelf, didFailRetrievingFirmwareUpdatesWithError: error)
                 }
         }
     }
 }
 
-public protocol NuimoDFUCacheDelegate: class {
-    func nuimoDFUCacheDidUpdate(cache: NuimoDFUCache)
-    func nuimoDFUCache(cache: NuimoDFUCache, didFailRetrievingFirmwareUpdatesWithError error: NSError)
+public protocol NuimoDFUFirmwareCacheDelegate: class {
+    func nuimoDFUFirmwareCacheDidUpdate(cache: NuimoDFUFirmwareCache)
+    func nuimoDFUFirmwareCache(cache: NuimoDFUFirmwareCache, didFailRetrievingFirmwareUpdatesWithError error: NSError)
 }
 
 public struct NuimoFirmwareUpdate {
@@ -112,4 +112,4 @@ public func <(lhs: NuimoFirmwareVersion, rhs: NuimoFirmwareVersion) -> Bool {
     return !(lhs == rhs) && !(lhs > rhs)
 }
 
-public let NuimoDFUCacheDidRequestFirmwareUpdates = "NuimoDFUCacheDidRequestFirmwareUpdates"
+public let NuimoDFUFirmwareCacheDidRequestFirmwareUpdates = "NuimoDFUFirmwareCacheDidRequestFirmwareUpdates"
