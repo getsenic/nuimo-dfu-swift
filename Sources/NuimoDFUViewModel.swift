@@ -18,13 +18,13 @@ public class NuimoDFUViewModel: NSObject {
     }
 
     private var step = DFUStep.Intro { didSet { didSetStep() } }
+    private var dfuController:         NuimoDFUBluetoothController?
     private lazy var discoveryManager: NuimoDFUDiscoveryManager = NuimoDFUDiscoveryManager(delegate: self)
     private lazy var updateManager:    NuimoDFUUpdateManager    = NuimoDFUUpdateManager(centralManager: self.discoveryManager.centralManager, delegate: self)
 
     public func viewDidLoad() {
         NuimoDFUFirmwareCache.sharedCache.requestFirmwareUpdates()
-        step = .Intro
-        didSetStep()
+        restart()
     }
 
     @IBAction public func dismiss(sender: AnyObject) {
@@ -35,18 +35,28 @@ public class NuimoDFUViewModel: NSObject {
 
     @IBAction public func performNextStep(sender: AnyObject) {
         switch step {
-        case .Intro:   step = .Discovery
+        case .Intro:
+            if let dfuController = dfuController {
+                startUpdateForNuimoController(dfuController)
+            }
+            else {
+                step = .Discovery
+            }
         case .Success: dismiss(self)
-        case .Error:   step = .Intro //TODO: When DFU was aborted (e.g. Nuimo turned off) then restarting the DFU process won't discover Nuimo in DFU, even though it can be discovered with other centrals.
+        case .Error:   restart() //TODO: When DFU was aborted (e.g. Nuimo turned off) then restarting the DFU process won't discover Nuimo in DFU, even though it can be discovered with other centrals.
         default:       break
         }
     }
+}
+
+extension NuimoDFUViewModel {
+    private func restart() {
+        dfuController = nil
+        step          = .Intro
+        discoveryManager.startDiscovery()
+    }
 
     private func didSetStep() {
-        if step == .Discovery {
-            discoveryManager.startDiscovery()
-        }
-
         delegate?.nuimoDFUViewModel(self, didSetStep: step)
         delegate?.nuimoDFUViewModel(self, didUpdateContinueButtonTitle: step.continueButtonTitle, continueButtonEnabled: step.continueButtonEnabled, cancelButtonEnabled: step.cancelButtonEnabled)
     }
@@ -78,7 +88,10 @@ public class NuimoDFUViewModel: NSObject {
 extension NuimoDFUViewModel: NuimoDFUDiscoveryManagerDelegate {
     public func nuimoDFUDiscoveryManager(manager: NuimoDFUDiscoveryManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController) {
         discoveryManager.stopDiscovery()
-        startUpdateForNuimoController(controller)
+        dfuController = controller
+        if step == .Discovery {
+            startUpdateForNuimoController(controller)
+        }
     }
 }
 
