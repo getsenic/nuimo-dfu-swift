@@ -18,9 +18,9 @@ public class NuimoDFUViewModel: NSObject {
     }
 
     private var step = DFUStep.Intro { didSet { didSetStep() } }
-    private var dfuController:         NuimoDFUBluetoothController?
-    private lazy var discoveryManager: NuimoDFUDiscoveryManager = NuimoDFUDiscoveryManager(delegate: self)
-    private lazy var updateManager:    NuimoDFUUpdateManager    = NuimoDFUUpdateManager(centralManager: self.discoveryManager.centralManager, delegate: self)
+    private var dfuController:    NuimoDFUBluetoothController?
+    private var discoveryManager: NuimoDFUDiscoveryManager?
+    private var updateManager:    NuimoDFUUpdateManager?
 
     public func viewDidLoad() {
         NuimoDFUFirmwareCache.sharedCache.requestFirmwareUpdates()
@@ -28,8 +28,8 @@ public class NuimoDFUViewModel: NSObject {
     }
 
     @IBAction public func dismiss(sender: AnyObject) {
-        discoveryManager.stopDiscovery()
-        updateManager.cancelUpdate()
+        discoveryManager?.stopDiscovery()
+        updateManager?.cancelUpdate()
         delegate?.nuimoDFUViewModelDidDismiss(self)
     }
 
@@ -51,9 +51,11 @@ public class NuimoDFUViewModel: NSObject {
 
 extension NuimoDFUViewModel {
     private func restart() {
-        dfuController = nil
-        step          = .Intro
-        discoveryManager.startDiscovery()
+        dfuController    = nil
+        step             = .Intro
+        discoveryManager = NuimoDFUDiscoveryManager(delegate: self)
+        updateManager    = NuimoDFUUpdateManager(centralManager: discoveryManager!.centralManager, delegate: self)
+        discoveryManager!.startDiscovery()
     }
 
     private func didSetStep() {
@@ -67,7 +69,7 @@ extension NuimoDFUViewModel {
             didFailWithError(NSError(domain: "NuimoDFU", code: 103, userInfo: [NSLocalizedDescriptionKey: "Cannot start firmware upload", NSLocalizedFailureReasonErrorKey: "Cannot access latest firmware"]))
             return
         }
-        updateManager.startUpdateForNuimoController(controller, withUpdateURL: updateURL)
+        updateManager?.startUpdateForNuimoController(controller, withUpdateURL: updateURL)
         step = .Update
     }
 
@@ -87,7 +89,7 @@ extension NuimoDFUViewModel {
 
 extension NuimoDFUViewModel: NuimoDFUDiscoveryManagerDelegate {
     public func nuimoDFUDiscoveryManager(manager: NuimoDFUDiscoveryManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController) {
-        discoveryManager.stopDiscovery()
+        discoveryManager?.stopDiscovery()
         dfuController = controller
         if step == .Discovery {
             startUpdateForNuimoController(controller)
