@@ -6,7 +6,7 @@
 //  Copyright © 2016 senic. All rights reserved.
 //
 
-import Foundation
+import NuimoSwift
 
 public class NuimoDFUViewModel: NSObject {
     @IBOutlet public weak var delegate: NuimoDFUViewModelDelegate?
@@ -90,10 +90,17 @@ extension NuimoDFUViewModel {
 extension NuimoDFUViewModel: NuimoDFUDiscoveryManagerDelegate {
     public func nuimoDFUDiscoveryManager(manager: NuimoDFUDiscoveryManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController) {
         discoveryManager?.stopDiscovery()
+        controller.delegate = self
         dfuController = controller
         if step == .Discovery {
             startUpdateForNuimoController(controller)
         }
+    }
+}
+
+extension NuimoDFUViewModel: NuimoControllerDelegate {
+    public func nuimoController(controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: NSError?) {
+        dfuController?.connectionState == .Invalidated ? dfuController = nil : ()
     }
 }
 
