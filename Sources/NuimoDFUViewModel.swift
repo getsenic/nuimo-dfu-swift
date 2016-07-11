@@ -100,7 +100,12 @@ extension NuimoDFUViewModel: NuimoDFUDiscoveryManagerDelegate {
 
 extension NuimoDFUViewModel: NuimoControllerDelegate {
     public func nuimoController(controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: NSError?) {
-        dfuController?.connectionState == .Invalidated ? dfuController = nil : ()
+        if dfuController?.connectionState == .Invalidated {
+            dfuController = nil
+            if [.Intro, .Discovery].contains(step) {
+                discoveryManager?.startDiscovery()
+            }
+        }
     }
 }
 
