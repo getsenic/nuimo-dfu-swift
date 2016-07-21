@@ -16,6 +16,8 @@ public class NuimoDFUViewModel: NSObject {
         get { return delegate }
         set { delegate = newValue as? NuimoDFUViewModelDelegate }
     }
+    /// If specified, it will take this firmware file, otherwise it will ask NuimoDFUFirmwareCache for the latest firmware that is stored remotely
+    public var firmwareFileURL: NSURL?
 
     private var step = DFUStep.Intro { didSet { didSetStep() } }
     private var dfuController:    NuimoDFUBluetoothController?
@@ -65,11 +67,11 @@ extension NuimoDFUViewModel {
 
     private func startUpdateForNuimoController(controller: NuimoDFUBluetoothController) {
         //TODO: Provide proper firmware file. We probably wanna predownload it
-        guard let updateURL = NuimoDFUFirmwareCache.sharedCache.latestFirmwareUpdate?.URL else {
+        guard let firmwareFileURL = firmwareFileURL ?? NuimoDFUFirmwareCache.sharedCache.latestFirmwareUpdate?.URL else {
             didFailWithError(NSError(domain: "NuimoDFU", code: 103, userInfo: [NSLocalizedDescriptionKey: "Cannot start firmware upload", NSLocalizedFailureReasonErrorKey: "Cannot access latest firmware"]))
             return
         }
-        updateManager?.startUpdateForNuimoController(controller, withUpdateURL: updateURL)
+        updateManager?.startUpdateForNuimoController(controller, withLocalOrRemoteFirmwareURL: firmwareFileURL)
         step = .Update
     }
 

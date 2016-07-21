@@ -25,7 +25,12 @@ public class NuimoDFUUpdateManager {
         self.delegate = delegate
     }
 
-    public func startUpdateForNuimoController(controller: NuimoDFUBluetoothController, withUpdateURL URL: NSURL) {
+    public func startUpdateForNuimoController(controller: NuimoDFUBluetoothController, withLocalOrRemoteFirmwareURL URL: NSURL) {
+        guard URL.scheme != "file" else {
+            updateNuimoController(controller, withLocalFirmwareURL: URL)
+            return
+        }
+
         let localFirmwareFilename = String(format: "%@_%@", NSProcessInfo.processInfo().globallyUniqueString, "nf.zip")
         let localFirmwareFileURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).URLByAppendingPathComponent(localFirmwareFilename)
 
@@ -37,10 +42,7 @@ public class NuimoDFUUpdateManager {
                     strongSelf.delegate?.nuimoDFUManager(strongSelf, didFailDownloadingFirmwareWithError: error)
                     return
                 }
-                let updateStarted = strongSelf.updateNuimoController(controller, withFirmwareZIPFileURL: localFirmwareFileURL)
-                if !updateStarted {
-                    strongSelf.delegate?.nuimoDFUManagerDidFailStartingFirmwareUpload(strongSelf)
-                }
+                strongSelf.updateNuimoController(controller, withLocalFirmwareURL: localFirmwareFileURL)
             }
     }
 
@@ -48,9 +50,12 @@ public class NuimoDFUUpdateManager {
         dfuController?.abort()
     }
 
-    private func updateNuimoController(controller: NuimoDFUBluetoothController, withFirmwareZIPFileURL firmwareURL: NSURL) -> Bool {
+    func updateNuimoController(controller: NuimoDFUBluetoothController, withLocalFirmwareURL firmwareURL: NSURL) {
         cancelUpdate()
-        guard let firmware = DFUFirmware(urlToZipFile: firmwareURL) else { return false }
+        guard let firmware = DFUFirmware(urlToZipFile: firmwareURL) else {
+            delegate?.nuimoDFUManagerDidFailStartingFirmwareUpload(self)
+            return
+        }
         let dfuInitiator = DFUServiceInitiator(centralManager: centralManager, target: controller.peripheral).then {
             #if DEBUG
             $0.logger           = self
@@ -58,9 +63,11 @@ public class NuimoDFUUpdateManager {
             $0.delegate         = self
             $0.progressDelegate = self
         }.withFirmwareFile(firmware)
-        guard let dfuController = dfuInitiator.start() else { return false }
+        guard let dfuController = dfuInitiator.start() else {
+            delegate?.nuimoDFUManagerDidFailStartingFirmwareUpload(self)
+            return
+        }
         self.dfuController = dfuController
-        return true
     }
 }
 
