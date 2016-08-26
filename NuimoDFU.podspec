@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
   s.source_files = "Sources/*.swift"
 
   s.dependency 'Alamofire',     '~> 3.4'
-  s.dependency 'iOSDFULibrary', '~> 0.1.8'
+  s.dependency 'iOSDFULibrary', '~> 1.0.8'
   s.dependency 'NuimoSwift',    '~> 0.7.0'
   s.dependency 'Then',          '~> 1.0.3'
 end
