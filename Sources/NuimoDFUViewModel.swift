@@ -16,6 +16,8 @@ public class NuimoDFUViewModel: NSObject {
         get { return delegate }
         set { delegate = newValue as? NuimoDFUViewModelDelegate }
     }
+    /// If specified, this controller will be automatically put into DFU mode (if possible)
+    public var nuimoBluetoothController: NuimoBluetoothController?
     /// If specified, it will take this firmware file, otherwise it will ask NuimoDFUFirmwareCache for the latest firmware that is stored remotely
     public var firmwareFileURL: NSURL?
 
@@ -41,8 +43,17 @@ public class NuimoDFUViewModel: NSObject {
             if let dfuController = dfuController {
                 startUpdateForNuimoController(dfuController)
             }
+            else if let nuimoBluetoothController = nuimoBluetoothController {
+                guard nuimoBluetoothController.rebootToDFUMode() else {
+                    didFailWithError(NSError(domain: "NuimoDFU", code: 104, userInfo: [NSLocalizedDescriptionKey: "Cannot reboot Nuimo into firmware update mode", NSLocalizedFailureReasonErrorKey: "Nuimo is not ready"]))
+                    return
+                }
+                //TODO: Make sure that controller is discovered within X msecs, otherwise fail. Also reset the timeout in restart().
+                step = .AutoRebootToDFUMode
+                delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "Preparing update...")
+            }
             else {
-                step = .Discovery
+                step = .ManualRebootToDFUMode
             }
         case .Success: dismiss(self)
         case .Error:   restart() //TODO: When DFU was aborted (e.g. Nuimo turned off) then restarting the DFU process won't discover Nuimo in DFU, even though it can be discovered with other centrals.
@@ -94,7 +105,7 @@ extension NuimoDFUViewModel: NuimoDFUDiscoveryManagerDelegate {
         discoveryManager?.stopDiscovery()
         controller.delegate = self
         dfuController = controller
-        if step == .Discovery {
+        if [.AutoRebootToDFUMode, .ManualRebootToDFUMode].contains(step) {
             startUpdateForNuimoController(controller)
         }
     }
@@ -104,7 +115,7 @@ extension NuimoDFUViewModel: NuimoControllerDelegate {
     public func nuimoController(controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: NSError?) {
         if dfuController?.connectionState == .Invalidated {
             dfuController = nil
-            if [.Intro, .Discovery].contains(step) {
+            if [.Intro, .AutoRebootToDFUMode, .ManualRebootToDFUMode].contains(step) {
                 discoveryManager?.startDiscovery()
             }
         }
@@ -138,21 +149,12 @@ extension NuimoDFUViewModel: NuimoDFUUpdateManagerDelegate {
 }
 
 @objc public enum DFUStep: Int {
-    case Intro = 0
-    case Discovery = 1
-    case Update = 2
-    case Success = 3
-    case Error = 4
-
-    public var segueIdentifier: String {
-        switch self {
-        case Intro:     return "intro"
-        case Discovery: return "discovery"
-        case Update:    return "update"
-        case Success:   return "success"
-        case Error:     return "error"
-        }
-    }
+    case Intro                 = 0
+    case AutoRebootToDFUMode   = 1
+    case ManualRebootToDFUMode = 2
+    case Update                = 3
+    case Success               = 4
+    case Error                 = 5
 
     public var continueButtonTitle: String {
         switch self {
@@ -164,9 +166,10 @@ extension NuimoDFUViewModel: NuimoDFUUpdateManagerDelegate {
 
     public var continueButtonEnabled: Bool {
         switch self {
-        case Discovery: fallthrough
-        case Update:    return false
-        default:        return true
+        case AutoRebootToDFUMode:   fallthrough
+        case ManualRebootToDFUMode: fallthrough
+        case Update:                return false
+        default:                    return true
         }
     }
 
@@ -179,12 +182,5 @@ extension DFUStep: Equatable {
 }
 
 public func ==(lhs: DFUStep, rhs: DFUStep) -> Bool {
-    switch (lhs, rhs) {
-    case (.Intro, .Intro):         return true
-    case (.Discovery, .Discovery): return true
-    case (.Update, .Update):       return true
-    case (.Success, .Success):     return true
-    case (.Error(_), .Error(_)):   return true
-    default:                       return false
-    }
+    return lhs.rawValue == rhs.rawValue
 }
