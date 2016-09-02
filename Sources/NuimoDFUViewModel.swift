@@ -126,7 +126,7 @@ extension NuimoDFUViewModel: NuimoDFUUpdateManagerDelegate {
     public func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didChangeState state: NuimoDFUUpdateState) {
         switch state {
         case .Completed: step = .Success
-        case .Aborted:   didFailWithError(NSError(domain: "NuimoDFU", code: 101, userInfo: [NSLocalizedDescriptionKey: "Firmware upload aborted", NSLocalizedFailureReasonErrorKey: "Aborted by user"]))
+        case .Aborted:   didFailWithError(NSError(domain: "NuimoDFU", code: 101, userInfo: [NSLocalizedDescriptionKey: "Firmware update aborted", NSLocalizedFailureReasonErrorKey: "Aborted by user"]))
         default:         delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(state.description)...")
         }
     }
@@ -139,8 +139,8 @@ extension NuimoDFUViewModel: NuimoDFUUpdateManagerDelegate {
         didFailWithError(error)
     }
 
-    public func nuimoDFUUpdateManagerDidFailStartingFirmwareUpload(manager: NuimoDFUUpdateManager) {
-        didFailWithError(NSError(domain: "NuimoDFU", code: 102, userInfo: [NSLocalizedDescriptionKey: "Cannot start firmware upload", NSLocalizedFailureReasonErrorKey: "Unknown"]))
+    public func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailStartingFirmwareUploadWithError error: NSError) {
+        didFailWithError(NSError(domain: "NuimoDFU", code: 102, userInfo: [NSLocalizedDescriptionKey: "Cannot start firmware update", NSLocalizedFailureReasonErrorKey: error.localizedDescription]))
     }
 
     public func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailFlashingFirmwareWithError error: NSError) {

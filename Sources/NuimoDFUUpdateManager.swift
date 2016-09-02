@@ -53,7 +53,7 @@ public class NuimoDFUUpdateManager {
     func updateNuimoController(controller: NuimoDFUBluetoothController, withLocalFirmwareURL firmwareURL: NSURL) {
         cancelUpdate()
         guard let firmware = DFUFirmware(urlToZipFile: firmwareURL) else {
-            delegate?.nuimoDFUUpdateManagerDidFailStartingFirmwareUpload(self)
+            delegate?.nuimoDFUUpdateManager(self, didFailStartingFirmwareUploadWithError: NSError(domain: "NuimoDFUUpdateManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cannot open firmware file", NSLocalizedFailureReasonErrorKey: "Unknown"]))
             return
         }
         let dfuInitiator = DFUServiceInitiator(centralManager: centralManager, target: controller.peripheral).then {
@@ -64,7 +64,7 @@ public class NuimoDFUUpdateManager {
             $0.progressDelegate = self
         }.withFirmwareFile(firmware)
         guard let dfuController = dfuInitiator.start() else {
-            delegate?.nuimoDFUUpdateManagerDidFailStartingFirmwareUpload(self)
+            delegate?.nuimoDFUUpdateManager(self, didFailStartingFirmwareUploadWithError: NSError(domain: "NuimoDFUUpdateManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Cannot start firmware update", NSLocalizedFailureReasonErrorKey: "Unexpected error"]))
             return
         }
         self.dfuController = dfuController
@@ -100,7 +100,7 @@ public protocol NuimoDFUUpdateManagerDelegate: class {
     func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didChangeState state: NuimoDFUUpdateState)
     func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didUpdateProgress progress: Float, forPartIndex partIndex: Int, ofPartsCount partsCount: Int)
     func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailDownloadingFirmwareWithError error: NSError)
-    func nuimoDFUUpdateManagerDidFailStartingFirmwareUpload(manager: NuimoDFUUpdateManager)
+    func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailStartingFirmwareUploadWithError error: NSError)
     func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailFlashingFirmwareWithError error: NSError)
 }
 
@@ -108,7 +108,7 @@ public extension NuimoDFUUpdateManagerDelegate {
     func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didChangeState state: NuimoDFUUpdateState) {}
     func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didUpdateProgress progress: Float, forPartIndex partIndex: Int, ofPartsCount partsCount: Int) {}
     func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailDownloadingFirmwareWithError error: NSError) {}
-    func nuimoDFUUpdateManagerDidFailStartingFirmwareUpload(manager: NuimoDFUUpdateManager) {}
+    func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailStartingFirmwareUploadWithError error: NSError) {}
     func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailFlashingFirmwareWithError error: NSError) {}
 }
 
