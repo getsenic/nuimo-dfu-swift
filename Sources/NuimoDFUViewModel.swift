@@ -43,7 +43,7 @@ public class NuimoDFUViewModel: NSObject {
             if let dfuController = dfuController {
                 startUpdateForNuimoController(dfuController)
             }
-            else if let nuimoBluetoothController = nuimoBluetoothController {
+            else if let nuimoBluetoothController = nuimoBluetoothController where nuimoBluetoothController.supportsRebootToDFUMode {
                 guard nuimoBluetoothController.rebootToDFUMode() else {
                     didFailWithError(NSError(domain: "NuimoDFU", code: 104, userInfo: [NSLocalizedDescriptionKey: "Cannot reboot Nuimo into firmware update mode", NSLocalizedFailureReasonErrorKey: "Nuimo is not ready"]))
                     return
