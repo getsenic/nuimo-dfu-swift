@@ -121,30 +121,42 @@ public enum NuimoDFUUpdateState {
     case Disconnecting
     case Completed
     case Aborted
+    case SignatureMismatch
+    case OperationNotPermitted
+    case Failed
 
     var description: String {
         switch self {
-        case Connecting      : return "Connecting"
-        case Starting        : return "Starting"
-        case EnablingDfuMode : return "Enabling DFU mode"
-        case Uploading       : return "Uploading"
-        case Validating      : return "Validating"
-        case Disconnecting   : return "Disconnecting"
-        case Completed       : return "Completing"
-        case Aborted         : return "Aborted"
+        case Connecting:            return "Connecting"
+        case Starting:              return "Starting"
+        case EnablingDfuMode:       return "Enabling DFU mode"
+        case Uploading:             return "Uploading"
+        case Validating:            return "Validating"
+        case Disconnecting:         return "Disconnecting"
+        case Completed:             return "Completing"
+        case Aborted:               return "Aborted"
+        case SignatureMismatch:     return "Signature mismatch"
+        case OperationNotPermitted: return "Operation not permitted"
+        case Failed:                return "Failed"
         }
     }
 
     init(state: State) {
         switch state {
-        case .Connecting:      self = .Connecting
-        case .Starting:        self = .Starting
-        case .EnablingDfuMode: self = .EnablingDfuMode
-        case .Uploading:       self = .Uploading
-        case .Validating:      self = .Validating
-        case .Disconnecting:   self = .Disconnecting
-        case .Completed:       self = .Completed
-        case .Aborted:         self = .Aborted
+        case .Connecting:            self = .Connecting
+        case .Starting:              self = .Starting
+        case .EnablingDfuMode:       self = .EnablingDfuMode
+        case .Uploading:             self = .Uploading
+        case .Validating:            self = .Validating
+        case .Disconnecting:         self = .Disconnecting
+        case .Completed:             self = .Completed
+        case .Aborted:               self = .Aborted
+        //TODO: Need to be added when nordic DFU library is updated from 1.0.12 which crashes, see https://github.com/NordicSemiconductor/IOS-Pods-DFU-Library/issues/14
+        /*
+        case .SignatureMismatch:     self = .SignatureMismatch
+        case .OperationNotPermitted: self = .OperationNotPermitted
+        case .Failed:                self = .Failed
+        */
         }
     }
 }

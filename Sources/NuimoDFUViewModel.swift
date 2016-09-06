@@ -125,9 +125,17 @@ extension NuimoDFUViewModel: NuimoControllerDelegate {
 extension NuimoDFUViewModel: NuimoDFUUpdateManagerDelegate {
     public func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didChangeState state: NuimoDFUUpdateState) {
         switch state {
-        case .Completed: step = .Success
-        case .Aborted:   didFailWithError(NSError(domain: "NuimoDFU", code: 101, userInfo: [NSLocalizedDescriptionKey: "Firmware update aborted", NSLocalizedFailureReasonErrorKey: "Aborted by user"]))
-        default:         delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(state.description)...")
+        case .Completed:             step = .Success
+        case .Connecting:            fallthrough
+        case .Starting:              fallthrough
+        case .EnablingDfuMode:       fallthrough
+        case .Uploading:             fallthrough
+        case .Validating:            fallthrough
+        case .Disconnecting:         delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(state.description)...")
+        case .Aborted:               fallthrough
+        case .SignatureMismatch:     fallthrough
+        case .OperationNotPermitted: fallthrough
+        case .Failed:                didFailWithError(NSError(domain: "NuimoDFU", code: 101, userInfo: [NSLocalizedDescriptionKey: "Firmware update failed", NSLocalizedFailureReasonErrorKey: state.description]))
         }
     }
 
