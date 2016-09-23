@@ -32,10 +32,10 @@ public class NuimoDFUUpdateManager {
         }
 
         let localFirmwareFilename = String(format: "%@_%@", NSProcessInfo.processInfo().globallyUniqueString, "nf.zip")
-        let localFirmwareFileURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).URLByAppendingPathComponent(localFirmwareFilename)
+        let localFirmwareFileURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).URLByAppendingPathComponent(localFirmwareFilename)!
 
         Alamofire
-            .download(.GET, URL.absoluteString, destination: { _ in return localFirmwareFileURL })
+            .download(.GET, URL.absoluteString!, destination: { _ in return localFirmwareFileURL })
             .response{ [weak self] (_, _, _, error) in
                 guard let strongSelf = self else { return }
                 if let error = error {
@@ -57,9 +57,7 @@ public class NuimoDFUUpdateManager {
             return
         }
         let dfuInitiator = DFUServiceInitiator(centralManager: centralManager, target: controller.peripheral).then {
-            #if DEBUG
-            $0.logger           = self
-            #endif
+            $0.logger           = self // Fixes https://github.com/NordicSemiconductor/IOS-Pods-DFU-Library/issues/14
             $0.delegate         = self
             $0.progressDelegate = self
         }.withFirmwareFile(firmware)
@@ -72,7 +70,7 @@ public class NuimoDFUUpdateManager {
 }
 
 extension NuimoDFUUpdateManager: DFUServiceDelegate {
-    @objc public func didStateChangedTo(state: State) {
+    @objc public func didStateChangedTo(state: DFUState) {
         delegate?.nuimoDFUUpdateManager(self, didChangeState: NuimoDFUUpdateState(state: state))
     }
 
@@ -87,14 +85,13 @@ extension NuimoDFUUpdateManager: DFUProgressDelegate {
     }
 }
 
-//TODO: http://marginalfutility.net/2015/10/11/swift-compiler-flags/
-#if DEBUG
 extension NuimoDFUUpdateManager: LoggerDelegate {
     @objc public func logWith(level: LogLevel, message: String) {
+        #if DEBUG
         print("DFU", level.rawValue, message)
+        #endif
     }
 }
-#endif
 
 public protocol NuimoDFUUpdateManagerDelegate: class {
     func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didChangeState state: NuimoDFUUpdateState)
@@ -141,7 +138,7 @@ public enum NuimoDFUUpdateState {
         }
     }
 
-    init(state: State) {
+    init(state: DFUState) {
         switch state {
         case .Connecting:            self = .Connecting
         case .Starting:              self = .Starting
@@ -151,12 +148,9 @@ public enum NuimoDFUUpdateState {
         case .Disconnecting:         self = .Disconnecting
         case .Completed:             self = .Completed
         case .Aborted:               self = .Aborted
-        //TODO: Need to be added when nordic DFU library is updated from 1.0.12 which crashes, see https://github.com/NordicSemiconductor/IOS-Pods-DFU-Library/issues/14
-        /*
         case .SignatureMismatch:     self = .SignatureMismatch
         case .OperationNotPermitted: self = .OperationNotPermitted
         case .Failed:                self = .Failed
-        */
         }
     }
 }

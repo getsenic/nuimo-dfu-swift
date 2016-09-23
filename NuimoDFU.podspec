@@ -20,7 +20,8 @@ Pod::Spec.new do |s|
   s.source_files = "Sources/*.swift"
 
   s.dependency 'Alamofire',     '~> 3.4'
-  s.dependency 'iOSDFULibrary', '1.0.8'
+  s.dependency 'iOSDFULibrary', '~> 1.0.12'
   s.dependency 'NuimoSwift',    '~> 0.7.0'
   s.dependency 'Then',          '~> 1.0.3'
+  s.dependency 'Zip',           '0.4.3' # Enforce Swift 2.3 release, otherwise iOSDFULibrary takes latest Swift 3.0 release
 end
