@@ -11,10 +11,10 @@ import Alamofire
 public class NuimoDFUFirmwareCache {
     public static let sharedCache = NuimoDFUFirmwareCache()
 
-    public weak var delegate: NuimoDFUFirmwareCacheDelegate?
-    public var updateStoreURL = NSURL(string: "https://www.senic.com/files/nuimo-firmware-updates.json")!
+    public weak var delegate:               NuimoDFUFirmwareCacheDelegate?
+    public var updateStoreURL               = NSURL(string: "https://files.senic.com/nuimo-firmware-updates.json")!
     public private(set) var firmwareUpates: [NuimoFirmwareUpdate] = []
-    public var latestFirmwareUpdate: NuimoFirmwareUpdate? { return firmwareUpates.first }
+    public var latestFirmwareUpdate:        NuimoFirmwareUpdate? { return firmwareUpates.first }
 
     public func requestFirmwareUpdates() {
         let request = NSMutableURLRequest(URL: updateStoreURL)
