@@ -12,11 +12,12 @@ public class NuimoDFUFirmwareCache {
     public static let sharedCache = NuimoDFUFirmwareCache()
 
     public weak var delegate: NuimoDFUFirmwareCacheDelegate?
+    public var updateStoreURL = NSURL(string: "https://www.senic.com/files/nuimo-firmware-updates.json")!
     public private(set) var firmwareUpates: [NuimoFirmwareUpdate] = []
     public var latestFirmwareUpdate: NuimoFirmwareUpdate? { return firmwareUpates.first }
 
     public func requestFirmwareUpdates() {
-        let request = NSMutableURLRequest(URL: NSURL(string: "https://www.senic.com/files/nuimo-firmware-updates.json")!)
+        let request = NSMutableURLRequest(URL: updateStoreURL)
         request.HTTPMethod  = "GET"
         request.cachePolicy = NSURLRequestCachePolicy.ReloadIgnoringCacheData
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
