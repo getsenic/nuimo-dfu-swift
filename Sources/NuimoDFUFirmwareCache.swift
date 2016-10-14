@@ -32,9 +32,16 @@ public class NuimoDFUFirmwareCache {
                         return
                     }
                     let updates: [NuimoFirmwareUpdate] = jsonUpdates
-                        .flatMap { values in guard let versionString = values["version"], version = NuimoFirmwareVersion(string: versionString), urlString = values["url"], url = NSURL(string: urlString) else { return nil }
+                        .flatMap { values in
+                            guard
+                                let versionString = values["version"],
+                                let version       = NuimoFirmwareVersion(string: versionString),
+                                let urlString     = values["url"],
+                                let url           = NSURL(string: urlString)
+                            else { return nil }
                             return NuimoFirmwareUpdate(version: version, URL: url)
-                        }.sort { (lhs, rhs) in
+                        }
+                        .sort { (lhs, rhs) in
                             return lhs > rhs
                         }
                     guard updates.count > 0 else {
