@@ -65,14 +65,21 @@ public struct NuimoFirmwareVersion {
     public let major: Int
     public let minor: Int
     public let patch: Int
+    public let beta: Int?
 
     public init?(string: String) {
-        let tokens = string.componentsSeparatedByString(".")
-        guard tokens.count >= 3 else { return nil }
-        guard let major = Int(tokens[0]), minor = Int(tokens[1]), patch = Int(tokens[2]) where major >= 0 && minor >= 0 && patch >= 0 else { return nil }
+        guard let match = string.matchingStrings("^([0-9]+)\\.([0-9]+)\\.([0-9]+)(?:\\.beta([0-9]+))?$").first else { return nil }
+        guard match.count >= 5 else { return nil }
+        guard
+            let major = Int(match[1]),
+            let minor = Int(match[2]),
+            let patch = Int(match[3])
+        else { return nil }
+
         self.major = major
         self.minor = minor
         self.patch = patch
+        self.beta  = Int(match[4])
     }
 }
 
@@ -100,13 +107,24 @@ public func >(lhs: NuimoFirmwareVersion, rhs: NuimoFirmwareVersion) -> Bool {
             if lhs.patch > rhs.patch {
                 return true
             }
+            else if lhs.patch == rhs.patch {
+                if let lhsBeta = lhs.beta {
+                    if let rhsBeta = rhs.beta {
+                        return lhsBeta > rhsBeta
+                    }
+                }
+                else if let _ = rhs.beta {
+                    // `lhs` is release and `rhs` is beta of the same version, e.g. `lhs`=1.2.3, `rhs`=1.2.3.beta4, that's why `lhs` outdates `rhs`
+                    return true
+                }
+            }
         }
     }
     return false
 }
 
 public func ==(lhs: NuimoFirmwareVersion, rhs: NuimoFirmwareVersion) -> Bool {
-    return lhs.major == rhs.major && lhs.minor == rhs.minor && lhs.patch == rhs.patch
+    return lhs.major == rhs.major && lhs.minor == rhs.minor && lhs.patch == rhs.patch && lhs.beta == rhs.beta
 }
 
 public func <(lhs: NuimoFirmwareVersion, rhs: NuimoFirmwareVersion) -> Bool {
@@ -114,3 +132,17 @@ public func <(lhs: NuimoFirmwareVersion, rhs: NuimoFirmwareVersion) -> Bool {
 }
 
 public let NuimoDFUFirmwareCacheDidRequestFirmwareUpdates = "NuimoDFUFirmwareCacheDidRequestFirmwareUpdates"
+
+private extension String {
+    func matchingStrings(regex: String) -> [[String]] {
+        guard let regex = try? NSRegularExpression(pattern: regex, options: []) else { return [] }
+        let nsString = self as NSString
+        let results  = regex.matchesInString(self, options: [], range: NSMakeRange(0, nsString.length))
+        return results.map { result in
+            (0..<result.numberOfRanges).map { result.rangeAtIndex($0).location != NSNotFound
+                ? nsString.substringWithRange(result.rangeAtIndex($0))
+                : ""
+            }
+        }
+    }
+}
