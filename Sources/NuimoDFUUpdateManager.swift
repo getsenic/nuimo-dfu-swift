@@ -75,6 +75,12 @@ extension NuimoDFUUpdateManager: DFUServiceDelegate {
     }
 
     @objc public func didErrorOccur(error: DFUError, withMessage message: String) {
+        if let dfuController = dfuController where error == .DeviceDisconnected {
+            // For some reason Nuimo/DFU library disconnect very often during first connection attempt, simply restart DFU
+            dfuController.abort()
+            dfuController.restart()
+            return
+        }
         delegate?.nuimoDFUUpdateManager(self, didFailFlashingFirmwareWithError: NSError(domain: "NuimoDFUUpdateManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Update aborted", NSLocalizedFailureReasonErrorKey: message]))
     }
 }
