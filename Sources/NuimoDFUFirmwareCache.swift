@@ -12,22 +12,22 @@ public class NuimoDFUFirmwareCache {
     public static let sharedCache = NuimoDFUFirmwareCache()
 
     public weak var delegate:               NuimoDFUFirmwareCacheDelegate?
-    public var updateStoreURL               = NSURL(string: "https://files.senic.com/nuimo-firmware-updates.json")!
+    public var updateStoreURL =             URL(string: "https://files.senic.com/nuimo-firmware-updates.json")!
     public private(set) var firmwareUpates: [NuimoFirmwareUpdate] = []
     public var latestFirmwareUpdate:        NuimoFirmwareUpdate? { return firmwareUpates.first }
 
     public func requestFirmwareUpdates() {
-        let request = NSMutableURLRequest(URL: updateStoreURL)
-        request.HTTPMethod  = "GET"
-        request.cachePolicy = NSURLRequestCachePolicy.ReloadIgnoringCacheData
+        var request = URLRequest(url: updateStoreURL)
+        request.httpMethod  = "GET"
+        request.cachePolicy = NSURLRequest.CachePolicy.reloadIgnoringCacheData
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         Alamofire
             .request(request)
             .responseJSON { [weak self] response in
                 guard let strongSelf = self else { return }
                 switch response.result {
-                case .Success(let json):
-                    guard let jsonUpdates = (json["updates"] as? Array<Dictionary<String, String>>) else {
+                case .success(let json):
+                    guard let jsonUpdates = (json as? [String : [[String : String]]])?["updates"] else {
                         strongSelf.delegate?.nuimoDFUFirmwareCache(strongSelf, didFailRetrievingFirmwareUpdatesWithError: NSError(domain: "NuimoDFUCache", code: 1, userInfo: [NSLocalizedDescriptionKey: "Cannot retrieve firmware updates", NSLocalizedFailureReasonErrorKey: "The update meta file is invalid"]))
                         return
                     }
@@ -37,11 +37,11 @@ public class NuimoDFUFirmwareCache {
                                 let versionString = values["version"],
                                 let version       = NuimoFirmwareVersion(string: versionString),
                                 let urlString     = values["url"],
-                                let url           = NSURL(string: urlString)
+                                let url           = URL(string: urlString)
                             else { return nil }
-                            return NuimoFirmwareUpdate(version: version, URL: url)
+                            return NuimoFirmwareUpdate(version: version, url: url)
                         }
-                        .sort { (lhs, rhs) in
+                        .sorted { (lhs, rhs) in
                             return lhs > rhs
                         }
                     guard updates.count > 0 else {
@@ -50,8 +50,8 @@ public class NuimoDFUFirmwareCache {
                     }
                     strongSelf.firmwareUpates = updates
                     strongSelf.delegate?.nuimoDFUFirmwareCacheDidUpdate(strongSelf)
-                    NSNotificationCenter.defaultCenter().postNotificationName(NuimoDFUFirmwareCacheDidRequestFirmwareUpdates, object: self)
-                case .Failure(let error):
+                    NotificationCenter.default.post(name: .NuimoDFUFirmwareCacheDidRequestFirmwareUpdates, object: self)
+                case .failure(let error):
                     strongSelf.delegate?.nuimoDFUFirmwareCache(strongSelf, didFailRetrievingFirmwareUpdatesWithError: error)
                 }
         }
@@ -59,13 +59,13 @@ public class NuimoDFUFirmwareCache {
 }
 
 public protocol NuimoDFUFirmwareCacheDelegate: class {
-    func nuimoDFUFirmwareCacheDidUpdate(cache: NuimoDFUFirmwareCache)
-    func nuimoDFUFirmwareCache(cache: NuimoDFUFirmwareCache, didFailRetrievingFirmwareUpdatesWithError error: NSError)
+    func nuimoDFUFirmwareCacheDidUpdate(_ cache: NuimoDFUFirmwareCache)
+    func nuimoDFUFirmwareCache(_ cache: NuimoDFUFirmwareCache, didFailRetrievingFirmwareUpdatesWithError error: Error)
 }
 
 public struct NuimoFirmwareUpdate {
     public let version: NuimoFirmwareVersion
-    public let URL: NSURL
+    public let url: URL
 }
 
 public struct NuimoFirmwareVersion {
@@ -75,7 +75,7 @@ public struct NuimoFirmwareVersion {
     public let beta: Int?
 
     public init?(string: String) {
-        guard let match = string.matchingStrings("^([0-9]+)\\.([0-9]+)\\.([0-9]+)(?:\\.beta([0-9]+))?$").first else { return nil }
+        guard let match = string.matchingStrings(regex: "^([0-9]+)\\.([0-9]+)\\.([0-9]+)(?:\\.beta([0-9]+))?$").first else { return nil }
         guard match.count >= 5 else { return nil }
         guard
             let major = Int(match[1]),
@@ -138,16 +138,18 @@ public func <(lhs: NuimoFirmwareVersion, rhs: NuimoFirmwareVersion) -> Bool {
     return !(lhs == rhs) && !(lhs > rhs)
 }
 
-public let NuimoDFUFirmwareCacheDidRequestFirmwareUpdates = "NuimoDFUFirmwareCacheDidRequestFirmwareUpdates"
+public extension Notification.Name {
+    static let NuimoDFUFirmwareCacheDidRequestFirmwareUpdates = Notification.Name(rawValue: "NuimoDFUFirmwareCacheDidRequestFirmwareUpdates")
+}
 
 private extension String {
     func matchingStrings(regex: String) -> [[String]] {
         guard let regex = try? NSRegularExpression(pattern: regex, options: []) else { return [] }
         let nsString = self as NSString
-        let results  = regex.matchesInString(self, options: [], range: NSMakeRange(0, nsString.length))
+        let results  = regex.matches(in: self, options: [], range: NSMakeRange(0, nsString.length))
         return results.map { result in
-            (0..<result.numberOfRanges).map { result.rangeAtIndex($0).location != NSNotFound
-                ? nsString.substringWithRange(result.rangeAtIndex($0))
+            (0..<result.numberOfRanges).map { result.rangeAt($0).location != NSNotFound
+                ? nsString.substring(with: result.rangeAt($0))
                 : ""
             }
         }

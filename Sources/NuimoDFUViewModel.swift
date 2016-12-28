@@ -8,114 +8,114 @@
 
 import NuimoSwift
 
-public class NuimoDFUViewModel: NSObject {
-    @IBOutlet public weak var delegate: NuimoDFUViewModelDelegate?
+open class NuimoDFUViewModel: NSObject {
+    @IBOutlet open weak var delegate: NuimoDFUViewModelDelegate?
     /// Workaround for Xcode bug that prevents you from connecting the delegate in the storyboard.
     /// Remove this extra property once Xcode gets fixed.
-    @IBOutlet public var ibDelegate: AnyObject? {
+    @IBOutlet open var ibDelegate: AnyObject? {
         get { return delegate }
         set { delegate = newValue as? NuimoDFUViewModelDelegate }
     }
     /// If specified, this controller will be automatically put into DFU mode (if possible)
-    public var nuimoBluetoothController: NuimoBluetoothController?
+    open var nuimoBluetoothController: NuimoBluetoothController?
     /// If specified, it will take this firmware file, otherwise it will ask NuimoDFUFirmwareCache for the latest firmware that is stored remotely
-    public var firmwareFileURL: NSURL?
+    open var firmwareFileURL: URL?
 
-    private var step = DFUStep.Intro { didSet { didSetStep() } }
-    private var dfuController:    NuimoDFUBluetoothController?
-    private var discoveryManager: NuimoDFUDiscoveryManager?
-    private var updateManager:    NuimoDFUUpdateManager?
+    fileprivate var step = DFUStep.intro { didSet { didSetStep() } }
+    fileprivate var dfuController:    NuimoDFUBluetoothController?
+    fileprivate var discoveryManager: NuimoDFUDiscoveryManager?
+    fileprivate var updateManager:    NuimoDFUUpdateManager?
 
-    public func viewDidLoad() {
+    open func viewDidLoad() {
         NuimoDFUFirmwareCache.sharedCache.requestFirmwareUpdates()
         restart()
     }
 
-    @IBAction public func dismiss(sender: AnyObject) {
+    @IBAction open func dismiss(_ sender: AnyObject) {
         discoveryManager?.stopDiscovery()
         updateManager?.cancelUpdate()
         delegate?.nuimoDFUViewModelDidDismiss(self)
     }
 
-    @IBAction public func performNextStep(sender: AnyObject) {
+    @IBAction open func performNextStep(_ sender: AnyObject) {
         switch step {
-        case .Intro:
+        case .intro:
             if let dfuController = dfuController {
                 startUpdateForNuimoController(dfuController)
             }
-            else if let nuimoBluetoothController = nuimoBluetoothController where nuimoBluetoothController.supportsRebootToDFUMode {
+            else if let nuimoBluetoothController = nuimoBluetoothController, nuimoBluetoothController.supportsRebootToDFUMode {
                 guard nuimoBluetoothController.rebootToDFUMode() else {
                     didFailWithError(NSError(domain: "NuimoDFU", code: 104, userInfo: [NSLocalizedDescriptionKey: "Cannot reboot Nuimo into firmware update mode", NSLocalizedFailureReasonErrorKey: "Nuimo is not ready"]))
                     return
                 }
                 //TODO: Make sure that controller is discovered within X msecs, otherwise fail. Also reset the timeout in restart().
-                step = .AutoRebootToDFUMode
+                step = .autoRebootToDFUMode
                 delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "Preparing update...")
             }
             else {
-                step = .ManualRebootToDFUMode
+                step = .manualRebootToDFUMode
             }
-        case .Success: dismiss(self)
-        case .Error:   restart() //TODO: When DFU was aborted (e.g. Nuimo turned off) then restarting the DFU process won't discover Nuimo in DFU, even though it can be discovered with other centrals.
+        case .success: dismiss(self)
+        case .error:   restart() //TODO: When DFU was aborted (e.g. Nuimo turned off) then restarting the DFU process won't discover Nuimo in DFU, even though it can be discovered with other centrals.
         default:       break
         }
     }
 }
 
 extension NuimoDFUViewModel {
-    private func restart() {
+    fileprivate func restart() {
         dfuController    = nil
-        step             = .Intro
+        step             = .intro
         discoveryManager = NuimoDFUDiscoveryManager(delegate: self)
         updateManager    = NuimoDFUUpdateManager(centralManager: discoveryManager!.centralManager, delegate: self)
         discoveryManager!.startDiscovery()
     }
 
-    private func didSetStep() {
+    fileprivate func didSetStep() {
         delegate?.nuimoDFUViewModel(self, didSetStep: step)
         delegate?.nuimoDFUViewModel(self, didUpdateContinueButtonTitle: step.continueButtonTitle, continueButtonEnabled: step.continueButtonEnabled, cancelButtonEnabled: step.cancelButtonEnabled)
     }
 
-    private func startUpdateForNuimoController(controller: NuimoDFUBluetoothController) {
+    fileprivate func startUpdateForNuimoController(_ controller: NuimoDFUBluetoothController) {
         //TODO: Provide proper firmware file. We probably wanna predownload it
-        guard let firmwareFileURL = firmwareFileURL ?? NuimoDFUFirmwareCache.sharedCache.latestFirmwareUpdate?.URL else {
+        guard let firmwareFileURL = firmwareFileURL ?? NuimoDFUFirmwareCache.sharedCache.latestFirmwareUpdate?.url else {
             didFailWithError(NSError(domain: "NuimoDFU", code: 103, userInfo: [NSLocalizedDescriptionKey: "Cannot start firmware upload", NSLocalizedFailureReasonErrorKey: "Cannot access latest firmware"]))
             return
         }
         updateManager?.startUpdateForNuimoController(controller, withLocalOrRemoteFirmwareURL: firmwareFileURL)
-        step = .Update
+        step = .update
     }
 
-    private func didFailWithError(error: NSError) {
-        step = .Error
+    fileprivate func didFailWithError(_ error: NSError) {
+        step = .error
         delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(error.localizedDescription)\n\(error.localizedFailureReason ?? "")")
     }
 }
 
 @objc public protocol NuimoDFUViewModelDelegate: class {
-    func nuimoDFUViewModel(model: NuimoDFUViewModel, didSetStep step: DFUStep)
-    func nuimoDFUViewModel(model: NuimoDFUViewModel, didUpdateContinueButtonTitle continueButtonTitle: String, continueButtonEnabled: Bool, cancelButtonEnabled: Bool)
-    func nuimoDFUViewModel(model: NuimoDFUViewModel, didUpdateStatusText text: String)
-    func nuimoDFUViewModel(model: NuimoDFUViewModel, didUpdateFlashProgress progress: Double)
-    func nuimoDFUViewModelDidDismiss(model: NuimoDFUViewModel)
+    func nuimoDFUViewModel(_ model: NuimoDFUViewModel, didSetStep step: DFUStep)
+    func nuimoDFUViewModel(_ model: NuimoDFUViewModel, didUpdateContinueButtonTitle continueButtonTitle: String, continueButtonEnabled: Bool, cancelButtonEnabled: Bool)
+    func nuimoDFUViewModel(_ model: NuimoDFUViewModel, didUpdateStatusText text: String)
+    func nuimoDFUViewModel(_ model: NuimoDFUViewModel, didUpdateFlashProgress progress: Double)
+    func nuimoDFUViewModelDidDismiss(_ model: NuimoDFUViewModel)
 }
 
 extension NuimoDFUViewModel: NuimoDFUDiscoveryManagerDelegate {
-    public func nuimoDFUDiscoveryManager(manager: NuimoDFUDiscoveryManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController) {
+    public func nuimoDFUDiscoveryManager(_ manager: NuimoDFUDiscoveryManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController) {
         discoveryManager?.stopDiscovery()
         controller.delegate = self
         dfuController = controller
-        if [.AutoRebootToDFUMode, .ManualRebootToDFUMode].contains(step) {
+        if [.autoRebootToDFUMode, .manualRebootToDFUMode].contains(step) {
             startUpdateForNuimoController(controller)
         }
     }
 }
 
 extension NuimoDFUViewModel: NuimoControllerDelegate {
-    public func nuimoController(controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: NSError?) {
-        if dfuController?.connectionState == .Invalidated {
+    @objc public func nuimoController(_ controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: Error?) {
+        if dfuController?.connectionState == .invalidated {
             dfuController = nil
-            if [.Intro, .AutoRebootToDFUMode, .ManualRebootToDFUMode].contains(step) {
+            if [.intro, .autoRebootToDFUMode, .manualRebootToDFUMode].contains(step) {
                 discoveryManager?.startDiscovery()
             }
         }
@@ -123,66 +123,63 @@ extension NuimoDFUViewModel: NuimoControllerDelegate {
 }
 
 extension NuimoDFUViewModel: NuimoDFUUpdateManagerDelegate {
-    public func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didChangeState state: NuimoDFUUpdateState) {
+    public func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didChangeState state: NuimoDFUUpdateState) {
         switch state {
-        case .Completed:             step = .Success
-        case .Connecting:            fallthrough
-        case .Starting:              fallthrough
-        case .EnablingDfuMode:       fallthrough
-        case .Uploading:             fallthrough
-        case .Validating:            fallthrough
-        case .Disconnecting:         delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(state.description)...")
-        case .Aborted:               fallthrough
-        case .SignatureMismatch:     fallthrough
-        case .OperationNotPermitted: fallthrough
-        case .Failed:                didFailWithError(NSError(domain: "NuimoDFU", code: 101, userInfo: [NSLocalizedDescriptionKey: "Firmware update failed", NSLocalizedFailureReasonErrorKey: state.description]))
+        case .completed:             step = .success
+        case .connecting:            fallthrough
+        case .starting:              fallthrough
+        case .enablingDfuMode:       fallthrough
+        case .uploading:             fallthrough
+        case .validating:            fallthrough
+        case .disconnecting:         delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(state.description)...")
+        case .aborted:               didFailWithError(NSError(domain: "NuimoDFU", code: 101, userInfo: [NSLocalizedDescriptionKey: "Firmware update failed", NSLocalizedFailureReasonErrorKey: state.description]))
         }
     }
 
-    public func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didUpdateProgress progress: Float, forPartIndex partIndex: Int, ofPartsCount partsCount: Int) {
+    public func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didUpdateProgress progress: Float, forPartIndex partIndex: Int, ofPartsCount partsCount: Int) {
         delegate?.nuimoDFUViewModel(self, didUpdateFlashProgress: Double(progress))
     }
 
-    public func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailDownloadingFirmwareWithError error: NSError) {
+    public func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailDownloadingFirmwareWithError error: NSError) {
         didFailWithError(error)
     }
 
-    public func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailStartingFirmwareUploadWithError error: NSError) {
+    public func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailStartingFirmwareUploadWithError error: NSError) {
         didFailWithError(NSError(domain: "NuimoDFU", code: 102, userInfo: [NSLocalizedDescriptionKey: "Cannot start firmware update", NSLocalizedFailureReasonErrorKey: error.localizedDescription]))
     }
 
-    public func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailFlashingFirmwareWithError error: NSError) {
+    public func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailFlashingFirmwareWithError error: NSError) {
         didFailWithError(error)
     }
 }
 
 @objc public enum DFUStep: Int {
-    case Intro                 = 0
-    case AutoRebootToDFUMode   = 1
-    case ManualRebootToDFUMode = 2
-    case Update                = 3
-    case Success               = 4
-    case Error                 = 5
+    case intro                 = 0
+    case autoRebootToDFUMode   = 1
+    case manualRebootToDFUMode = 2
+    case update                = 3
+    case success               = 4
+    case error                 = 5
 
     public var continueButtonTitle: String {
         switch self {
-        case Success:  return "Close"
-        case Error(_): return "Retry"
+        case .success:  return "Close"
+        case .error(_): return "Retry"
         default:       return "Continue"
         }
     }
 
     public var continueButtonEnabled: Bool {
         switch self {
-        case AutoRebootToDFUMode:   fallthrough
-        case ManualRebootToDFUMode: fallthrough
-        case Update:                return false
+        case .autoRebootToDFUMode:   fallthrough
+        case .manualRebootToDFUMode: fallthrough
+        case .update:                return false
         default:                    return true
         }
     }
 
     public var cancelButtonEnabled: Bool {
-        return self != .Success
+        return self != .success
     }
 }
 

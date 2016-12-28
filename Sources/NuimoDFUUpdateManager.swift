@@ -18,6 +18,8 @@ public class NuimoDFUUpdateManager {
     public private(set) var discoveredControllers: Set<NuimoDFUBluetoothController> = []
 
     private var centralManager: CBCentralManager
+
+    private var dfuInitiator: DFUServiceInitiator?
     private var dfuController: DFUServiceController?
 
     public init(centralManager: CBCentralManager, delegate: NuimoDFUUpdateManagerDelegate? = nil) {
@@ -25,20 +27,22 @@ public class NuimoDFUUpdateManager {
         self.delegate = delegate
     }
 
-    public func startUpdateForNuimoController(controller: NuimoDFUBluetoothController, withLocalOrRemoteFirmwareURL URL: NSURL) {
-        guard URL.scheme != "file" else {
-            updateNuimoController(controller, withLocalFirmwareURL: URL)
+    public func startUpdateForNuimoController(_ controller: NuimoDFUBluetoothController, withLocalOrRemoteFirmwareURL url: URL) {
+        guard url.scheme != "file" else {
+            updateNuimoController(controller, withLocalFirmwareURL: url)
             return
         }
 
-        let localFirmwareFilename = String(format: "%@_%@", NSProcessInfo.processInfo().globallyUniqueString, "nf.zip")
-        let localFirmwareFileURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).URLByAppendingPathComponent(localFirmwareFilename)!
+        let localFirmwareFilename = String(format: "%@_%@", ProcessInfo.processInfo.globallyUniqueString, "nf.zip")
+        let localFirmwareFileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(localFirmwareFilename)
 
         Alamofire
-            .download(.GET, URL.absoluteString!, destination: { _ in return localFirmwareFileURL })
-            .response{ [weak self] (_, _, _, error) in
+            .download(url) { _ in
+                return (localFirmwareFileURL, [DownloadRequest.DownloadOptions.removePreviousFile])
+            }
+            .response{ [weak self] response in
                 guard let strongSelf = self else { return }
-                if let error = error {
+                if let error = response.error {
                     strongSelf.delegate?.nuimoDFUUpdateManager(strongSelf, didFailDownloadingFirmwareWithError: error)
                     return
                 }
@@ -50,17 +54,24 @@ public class NuimoDFUUpdateManager {
         dfuController?.abort()
     }
 
-    func updateNuimoController(controller: NuimoDFUBluetoothController, withLocalFirmwareURL firmwareURL: NSURL) {
+    func updateNuimoController(_ controller: NuimoDFUBluetoothController, withLocalFirmwareURL firmwareURL: URL) {
         cancelUpdate()
         guard let firmware = DFUFirmware(urlToZipFile: firmwareURL) else {
             delegate?.nuimoDFUUpdateManager(self, didFailStartingFirmwareUploadWithError: NSError(domain: "NuimoDFUUpdateManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cannot open firmware file", NSLocalizedFailureReasonErrorKey: "Unknown"]))
             return
         }
-        let dfuInitiator = DFUServiceInitiator(centralManager: centralManager, target: controller.peripheral).then {
+        dfuInitiator = DFUServiceInitiator(centralManager: centralManager, target: controller.peripheral).then {
             $0.logger           = self // Fixes https://github.com/NordicSemiconductor/IOS-Pods-DFU-Library/issues/14
             $0.delegate         = self
             $0.progressDelegate = self
-        }.withFirmwareFile(firmware)
+        }.with(firmware: firmware)
+
+        startUpdate()
+    }
+
+    fileprivate func startUpdate() {
+        guard let dfuInitiator = dfuInitiator else { return }
+
         guard let dfuController = dfuInitiator.start() else {
             delegate?.nuimoDFUUpdateManager(self, didFailStartingFirmwareUploadWithError: NSError(domain: "NuimoDFUUpdateManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Cannot start firmware update", NSLocalizedFailureReasonErrorKey: "Unexpected error"]))
             return
@@ -70,29 +81,30 @@ public class NuimoDFUUpdateManager {
 }
 
 extension NuimoDFUUpdateManager: DFUServiceDelegate {
-    @objc public func didStateChangedTo(state: DFUState) {
+    @objc public func dfuStateDidChange(to state: DFUState) {
         delegate?.nuimoDFUUpdateManager(self, didChangeState: NuimoDFUUpdateState(state: state))
     }
 
-    @objc public func didErrorOccur(error: DFUError, withMessage message: String) {
-        if let dfuController = dfuController where error == .DeviceDisconnected {
-            // For some reason Nuimo/DFU library disconnect very often during first connection attempt, simply restart DFU
-            dfuController.abort()
-            dfuController.restart()
+    @objc public func dfuError(_ error: DFUError, didOccurWithMessage message: String) {
+        if error == .deviceDisconnected {
+            // For some reason Nuimo/DFU library disconnects very often during first connection attempt, simply restart DFU
+            cancelUpdate()
+            startUpdate()
             return
         }
-        delegate?.nuimoDFUUpdateManager(self, didFailFlashingFirmwareWithError: NSError(domain: "NuimoDFUUpdateManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Update aborted", NSLocalizedFailureReasonErrorKey: message]))
+
+        delegate?.nuimoDFUUpdateManager(self, didFailFlashingFirmwareWithError: NSError(domain: "NuimoDFUUpdateManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Update aborted with error code \(error.rawValue)", NSLocalizedFailureReasonErrorKey: message]))
     }
 }
 
 extension NuimoDFUUpdateManager: DFUProgressDelegate {
-    @objc public func onUploadProgress(part: Int, totalParts: Int, progress: Int, currentSpeedBytesPerSecond: Double, avgSpeedBytesPerSecond: Double) {
+    @objc public func dfuProgressDidChange(for part: Int, outOf totalParts: Int, to progress: Int, currentSpeedBytesPerSecond: Double, avgSpeedBytesPerSecond: Double) {
         delegate?.nuimoDFUUpdateManager(self, didUpdateProgress: Float(progress) / 100.0, forPartIndex: part - 1, ofPartsCount: totalParts)
     }
 }
 
 extension NuimoDFUUpdateManager: LoggerDelegate {
-    @objc public func logWith(level: LogLevel, message: String) {
+    @objc public func logWith(_ level: LogLevel, message: String) {
         #if DEBUG
         print("DFU", level.rawValue, message)
         #endif
@@ -100,63 +112,54 @@ extension NuimoDFUUpdateManager: LoggerDelegate {
 }
 
 public protocol NuimoDFUUpdateManagerDelegate: class {
-    func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didChangeState state: NuimoDFUUpdateState)
-    func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didUpdateProgress progress: Float, forPartIndex partIndex: Int, ofPartsCount partsCount: Int)
-    func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailDownloadingFirmwareWithError error: NSError)
-    func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailStartingFirmwareUploadWithError error: NSError)
-    func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailFlashingFirmwareWithError error: NSError)
+    func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didChangeState state: NuimoDFUUpdateState)
+    func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didUpdateProgress progress: Float, forPartIndex partIndex: Int, ofPartsCount partsCount: Int)
+    func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailDownloadingFirmwareWithError error: Error)
+    func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailStartingFirmwareUploadWithError error: Error)
+    func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailFlashingFirmwareWithError error: Error)
 }
 
 public extension NuimoDFUUpdateManagerDelegate {
-    func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didChangeState state: NuimoDFUUpdateState) {}
-    func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didUpdateProgress progress: Float, forPartIndex partIndex: Int, ofPartsCount partsCount: Int) {}
-    func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailDownloadingFirmwareWithError error: NSError) {}
-    func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailStartingFirmwareUploadWithError error: NSError) {}
-    func nuimoDFUUpdateManager(manager: NuimoDFUUpdateManager, didFailFlashingFirmwareWithError error: NSError) {}
+    func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didChangeState state: NuimoDFUUpdateState) {}
+    func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didUpdateProgress progress: Float, forPartIndex partIndex: Int, ofPartsCount partsCount: Int) {}
+    func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailDownloadingFirmwareWithError error: Error) {}
+    func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailStartingFirmwareUploadWithError error: Error) {}
+    func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailFlashingFirmwareWithError error: Error) {}
 }
 
 public enum NuimoDFUUpdateState {
-    case Connecting
-    case Starting
-    case EnablingDfuMode
-    case Uploading
-    case Validating
-    case Disconnecting
-    case Completed
-    case Aborted
-    case SignatureMismatch
-    case OperationNotPermitted
-    case Failed
+    case connecting
+    case starting
+    case enablingDfuMode
+    case uploading
+    case validating
+    case disconnecting
+    case completed
+    case aborted
 
     var description: String {
         switch self {
-        case Connecting:            return "Connecting"
-        case Starting:              return "Starting"
-        case EnablingDfuMode:       return "Enabling DFU mode"
-        case Uploading:             return "Uploading"
-        case Validating:            return "Validating"
-        case Disconnecting:         return "Disconnecting"
-        case Completed:             return "Completing"
-        case Aborted:               return "Aborted"
-        case SignatureMismatch:     return "Signature mismatch"
-        case OperationNotPermitted: return "Operation not permitted"
-        case Failed:                return "Failed"
+        case .connecting:            return "Connecting"
+        case .starting:              return "Starting"
+        case .enablingDfuMode:       return "Enabling DFU mode"
+        case .uploading:             return "Uploading"
+        case .validating:            return "Validating"
+        case .disconnecting:         return "Disconnecting"
+        case .completed:             return "Completing"
+        case .aborted:               return "Aborted"
         }
     }
 
     init(state: DFUState) {
         switch state {
-        case .Connecting:            self = .Connecting
-        case .Starting:              self = .Starting
-        case .EnablingDfuMode:       self = .EnablingDfuMode
-        case .Uploading:             self = .Uploading
-        case .Validating:            self = .Validating
-        case .Disconnecting:         self = .Disconnecting
-        case .Completed:             self = .Completed
-        case .Aborted:               self = .Aborted
-        case .SignatureMismatch:     self = .SignatureMismatch
-        case .OperationNotPermitted: self = .OperationNotPermitted
-        case .Failed:                self = .Failed
+        case .connecting:            self = .connecting
+        case .starting:              self = .starting
+        case .enablingDfuMode:       self = .enablingDfuMode
+        case .uploading:             self = .uploading
+        case .validating:            self = .validating
+        case .disconnecting:         self = .disconnecting
+        case .completed:             self = .completed
+        case .aborted:               self = .aborted
         }
     }
 }

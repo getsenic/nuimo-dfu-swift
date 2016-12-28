@@ -19,9 +19,9 @@ Pod::Spec.new do |s|
   s.framework    = 'CoreBluetooth'
   s.source_files = "Sources/*.swift"
 
-  s.dependency 'Alamofire',     '~> 3.4'
-  s.dependency 'iOSDFULibrary', '~> 1.0.12'
+  s.dependency 'Alamofire',     '~> 4.2.0'
+  s.dependency 'iOSDFULibrary', '~> 3.0.3'
   s.dependency 'NuimoSwift',    '~> 0.7.0'
-  s.dependency 'Then',          '~> 1.0.3'
-  s.dependency 'Zip',           '0.4.3' # Enforce Swift 2.3 release, otherwise iOSDFULibrary takes latest Swift 3.0 release
+  s.dependency 'Then',          '~> 2.1.0'
+  s.dependency 'Zip',           '~> 0.6.0'
 end

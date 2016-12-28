@@ -15,7 +15,7 @@ public class NuimoDFUDiscoveryManager {
     public weak var delegate: NuimoDFUDiscoveryManagerDelegate?
     public var centralManager: CBCentralManager { return discovery.centralManager }
 
-    public private(set) var discoveredControllers: Set<NuimoDFUBluetoothController> = []
+    public fileprivate(set) var discoveredControllers: Set<NuimoDFUBluetoothController> = []
 
     private lazy var discovery: NuimoDiscoveryManager = NuimoDiscoveryManager(delegate: self, options: [CBCentralManagerScanOptionAllowDuplicatesKey: true, NuimoDiscoveryManagerAdditionalDiscoverServiceUUIDsKey: [CBUUID(string: "00001530-1212-EFDE-1523-785FEABCD123")]])
 
@@ -24,7 +24,7 @@ public class NuimoDFUDiscoveryManager {
     }
 
     public func startDiscovery() {
-        discovery.startDiscovery(true)
+        discovery.startDiscovery(detectUnreachableControllers: true)
     }
 
     public func stopDiscovery() {
@@ -33,12 +33,12 @@ public class NuimoDFUDiscoveryManager {
 }
 
 extension NuimoDFUDiscoveryManager: NuimoDiscoveryDelegate {
-    @objc public func nuimoDiscoveryManager(discovery: NuimoDiscoveryManager, deviceForPeripheral peripheral: CBPeripheral) -> BLEDevice? {
+    @objc public func nuimoDiscoveryManager(_ discovery: NuimoDiscoveryManager, deviceForPeripheral peripheral: CBPeripheral) -> BLEDevice? {
         guard peripheral.name == "NuimoDFU" else { return nil }
-        return NuimoDFUBluetoothController(discoveryManager: discovery.bleDiscovery, uuid: peripheral.identifier.UUIDString, peripheral: peripheral)
+        return NuimoDFUBluetoothController(discoveryManager: discovery.bleDiscovery, uuid: peripheral.identifier.uuidString, peripheral: peripheral)
     }
 
-    @objc public func nuimoDiscoveryManager(discovery: NuimoDiscoveryManager, didDiscoverNuimoController controller: NuimoController) {
+    @objc public func nuimoDiscoveryManager(_ discovery: NuimoDiscoveryManager, didDiscoverNuimoController controller: NuimoController) {
         guard let controller = controller as? NuimoDFUBluetoothController else { return }
         controller.delegate = self
         discoveredControllers.insert(controller)
@@ -47,9 +47,9 @@ extension NuimoDFUDiscoveryManager: NuimoDiscoveryDelegate {
 }
 
 extension NuimoDFUDiscoveryManager: NuimoControllerDelegate {
-    @objc public func nuimoController(controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: NSError?) {
+    @objc public func nuimoController(_ controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: NSError?) {
         guard let controller = controller as? NuimoDFUBluetoothController else { return }
-        if state == .Invalidated {
+        if state == .invalidated {
             discoveredControllers.remove(controller)
             delegate?.nuimoDFUDiscoveryManager(self, didInvalidateNuimoDFUController: controller)
         }
@@ -57,11 +57,11 @@ extension NuimoDFUDiscoveryManager: NuimoControllerDelegate {
 }
 
 public protocol NuimoDFUDiscoveryManagerDelegate: class {
-    func nuimoDFUDiscoveryManager(manager: NuimoDFUDiscoveryManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController)
-    func nuimoDFUDiscoveryManager(manager: NuimoDFUDiscoveryManager, didInvalidateNuimoDFUController controller: NuimoDFUBluetoothController)
+    func nuimoDFUDiscoveryManager(_ manager: NuimoDFUDiscoveryManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController)
+    func nuimoDFUDiscoveryManager(_ manager: NuimoDFUDiscoveryManager, didInvalidateNuimoDFUController controller: NuimoDFUBluetoothController)
 }
 
 public extension NuimoDFUDiscoveryManagerDelegate {
-    func nuimoDFUDiscoveryManager(manager: NuimoDFUDiscoveryManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController) {}
-    func nuimoDFUDiscoveryManager(manager: NuimoDFUDiscoveryManager, didInvalidateNuimoDFUController controller: NuimoDFUBluetoothController) {}
+    func nuimoDFUDiscoveryManager(_ manager: NuimoDFUDiscoveryManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController) {}
+    func nuimoDFUDiscoveryManager(_ manager: NuimoDFUDiscoveryManager, didInvalidateNuimoDFUController controller: NuimoDFUBluetoothController) {}
 }
