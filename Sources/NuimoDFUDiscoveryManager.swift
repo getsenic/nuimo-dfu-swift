@@ -17,7 +17,11 @@ public class NuimoDFUDiscoveryManager {
 
     public fileprivate(set) var discoveredControllers: Set<NuimoDFUBluetoothController> = []
 
-    private lazy var discovery: NuimoDiscoveryManager = NuimoDiscoveryManager(delegate: self, options: [CBCentralManagerScanOptionAllowDuplicatesKey: true, NuimoDiscoveryManagerAdditionalDiscoverServiceUUIDsKey: [CBUUID(string: "00001530-1212-EFDE-1523-785FEABCD123")]])
+    private lazy var discovery: NuimoDiscoveryManager = NuimoDiscoveryManager(delegate: self, options: [
+        CBCentralManagerOptionRestoreIdentifierKey :             "NuimoDFUDiscoveryManager",
+        CBCentralManagerScanOptionAllowDuplicatesKey :           true,
+        NuimoDiscoveryManagerAdditionalDiscoverServiceUUIDsKey : [CBUUID(string: "00001530-1212-EFDE-1523-785FEABCD123")]
+    ])
 
     public init(delegate: NuimoDFUDiscoveryManagerDelegate? = nil) {
         self.delegate = delegate
@@ -65,3 +69,7 @@ public extension NuimoDFUDiscoveryManagerDelegate {
     func nuimoDFUDiscoveryManager(_ manager: NuimoDFUDiscoveryManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController) {}
     func nuimoDFUDiscoveryManager(_ manager: NuimoDFUDiscoveryManager, didInvalidateNuimoDFUController controller: NuimoDFUBluetoothController) {}
 }
+
+#if os(macOS)
+private let CBCentralManagerOptionRestoreIdentifierKey = "CBCentralManagerOptionRestoreIdentifierKey-does-not-exist-on-macOS"
+#endif
