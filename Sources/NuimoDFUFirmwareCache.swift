@@ -75,7 +75,7 @@ public struct NuimoFirmwareVersion {
     public let beta: Int?
 
     public init?(string: String) {
-        guard let match = string.matchingStrings(regex: "^([0-9]+)\\.([0-9]+)\\.([0-9]+)(?:\\.beta([0-9]+))?$").first else { return nil }
+        guard let match = string.matchingStrings(regex: "^([0-9]+)\\.([0-9]+)\\.([0-9]+)(?:-beta([0-9]+))?$").first else { return nil }
         guard match.count >= 5 else { return nil }
         guard
             let major = Int(match[1]),
