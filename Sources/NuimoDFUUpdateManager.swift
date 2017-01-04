@@ -15,8 +15,6 @@ import Then
 public class NuimoDFUUpdateManager {
     public weak var delegate: NuimoDFUUpdateManagerDelegate?
 
-    public private(set) var discoveredControllers: Set<NuimoDFUBluetoothController> = []
-
     private var centralManager: CBCentralManager
 
     private var dfuInitiator: DFUServiceInitiator?
