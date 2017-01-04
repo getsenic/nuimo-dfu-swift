@@ -47,7 +47,7 @@ extension NuimoDFUDiscoveryManager: NuimoDiscoveryDelegate {
 }
 
 extension NuimoDFUDiscoveryManager: NuimoControllerDelegate {
-    public func nuimoController(_ controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: NSError?) {
+    public func nuimoController(_ controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: Error?) {
         guard let controller = controller as? NuimoDFUBluetoothController else { return }
         if state == .invalidated {
             discoveredControllers.remove(controller)

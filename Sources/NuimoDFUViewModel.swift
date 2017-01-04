@@ -86,9 +86,9 @@ extension NuimoDFUViewModel {
         step = .update
     }
 
-    fileprivate func didFailWithError(_ error: NSError) {
+    fileprivate func didFailWithError(_ error: Error) {
         step = .error
-        delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(error.localizedDescription)\n\(error.localizedFailureReason ?? "")")
+        delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(error.localizedDescription)\n\((error as? LocalizedError)?.failureReason ?? "")")
     }
 }
 
@@ -140,15 +140,15 @@ extension NuimoDFUViewModel: NuimoDFUUpdateManagerDelegate {
         delegate?.nuimoDFUViewModel(self, didUpdateFlashProgress: Double(progress))
     }
 
-    public func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailDownloadingFirmwareWithError error: NSError) {
+    public func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailDownloadingFirmwareWithError error: Error) {
         didFailWithError(error)
     }
 
-    public func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailStartingFirmwareUploadWithError error: NSError) {
+    public func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailStartingFirmwareUploadWithError error: Error) {
         didFailWithError(NSError(domain: "NuimoDFU", code: 102, userInfo: [NSLocalizedDescriptionKey: "Cannot start firmware update", NSLocalizedFailureReasonErrorKey: error.localizedDescription]))
     }
 
-    public func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailFlashingFirmwareWithError error: NSError) {
+    public func nuimoDFUUpdateManager(_ manager: NuimoDFUUpdateManager, didFailFlashingFirmwareWithError error: Error) {
         didFailWithError(error)
     }
 }
