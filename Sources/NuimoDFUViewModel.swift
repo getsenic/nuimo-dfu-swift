@@ -112,7 +112,7 @@ extension NuimoDFUViewModel: NuimoDFUDiscoveryManagerDelegate {
 }
 
 extension NuimoDFUViewModel: NuimoControllerDelegate {
-    @objc public func nuimoController(_ controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: Error?) {
+    public func nuimoController(_ controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: Error?) {
         if dfuController?.connectionState == .invalidated {
             dfuController = nil
             if [.intro, .autoRebootToDFUMode, .manualRebootToDFUMode].contains(step) {

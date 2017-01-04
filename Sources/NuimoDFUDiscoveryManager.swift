@@ -37,12 +37,12 @@ public class NuimoDFUDiscoveryManager {
 }
 
 extension NuimoDFUDiscoveryManager: NuimoDiscoveryDelegate {
-    @objc public func nuimoDiscoveryManager(_ discovery: NuimoDiscoveryManager, deviceForPeripheral peripheral: CBPeripheral) -> BLEDevice? {
+    public func nuimoDiscoveryManager(_ discovery: NuimoDiscoveryManager, deviceForPeripheral peripheral: CBPeripheral) -> BLEDevice? {
         guard peripheral.name == "NuimoDFU" else { return nil }
         return NuimoDFUBluetoothController(discoveryManager: discovery.bleDiscovery, uuid: peripheral.identifier.uuidString, peripheral: peripheral)
     }
 
-    @objc public func nuimoDiscoveryManager(_ discovery: NuimoDiscoveryManager, didDiscoverNuimoController controller: NuimoController) {
+    public func nuimoDiscoveryManager(_ discovery: NuimoDiscoveryManager, didDiscoverNuimoController controller: NuimoController) {
         guard let controller = controller as? NuimoDFUBluetoothController else { return }
         controller.delegate = self
         discoveredControllers.insert(controller)
@@ -51,7 +51,7 @@ extension NuimoDFUDiscoveryManager: NuimoDiscoveryDelegate {
 }
 
 extension NuimoDFUDiscoveryManager: NuimoControllerDelegate {
-    @objc public func nuimoController(_ controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: NSError?) {
+    public func nuimoController(_ controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: NSError?) {
         guard let controller = controller as? NuimoDFUBluetoothController else { return }
         if state == .invalidated {
             discoveredControllers.remove(controller)

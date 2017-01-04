@@ -21,7 +21,7 @@ Pod::Spec.new do |s|
 
   s.dependency 'Alamofire',     '~> 4.2.0'
   s.dependency 'iOSDFULibrary', '~> 3.0.3'
-  s.dependency 'NuimoSwift',    '~> 0.7.0'
+  s.dependency 'NuimoSwift',    '~> 0.8.0'
   s.dependency 'Then',          '~> 2.1.0'
   s.dependency 'Zip',           '~> 0.6.0'
 end
