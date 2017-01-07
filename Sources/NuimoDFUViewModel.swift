@@ -103,21 +103,16 @@ extension NuimoDFUViewModel {
 extension NuimoDFUViewModel: NuimoDFUDiscoveryManagerDelegate {
     public func nuimoDFUDiscoveryManager(_ manager: NuimoDFUDiscoveryManager, didDisoverNuimoDFUController controller: NuimoDFUBluetoothController) {
         discoveryManager?.stopDiscovery()
-        controller.delegate = self
         dfuController = controller
         if [.autoRebootToDFUMode, .manualRebootToDFUMode].contains(step) {
             startUpdateForNuimoController(controller)
         }
     }
-}
 
-extension NuimoDFUViewModel: NuimoControllerDelegate {
-    public func nuimoController(_ controller: NuimoController, didChangeConnectionState state: NuimoConnectionState, withError error: Error?) {
-        if dfuController?.connectionState == .invalidated {
-            dfuController = nil
-            if [.intro, .autoRebootToDFUMode, .manualRebootToDFUMode].contains(step) {
-                discoveryManager?.startDiscovery()
-            }
+    public func nuimoDFUDiscoveryManager(_ manager: NuimoDFUDiscoveryManager, didInvalidateNuimoDFUController controller: NuimoDFUBluetoothController) {
+        dfuController = nil
+        if [.intro, .autoRebootToDFUMode, .manualRebootToDFUMode].contains(step) {
+            discoveryManager?.startDiscovery()
         }
     }
 }
