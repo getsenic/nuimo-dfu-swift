@@ -58,7 +58,11 @@ public class NuimoDFUUpdateManager {
             delegate?.nuimoDFUUpdateManager(self, didFailStartingFirmwareUploadWithError: NSError(domain: "NuimoDFUUpdateManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cannot open firmware file", NSLocalizedFailureReasonErrorKey: "Unknown"]))
             return
         }
-        dfuInitiator = DFUServiceInitiator(centralManager: centralManager, target: controller.peripheral).then {
+        guard let peripheral = controller.peripheral else {
+            delegate?.nuimoDFUUpdateManager(self, didFailStartingFirmwareUploadWithError: NSError(domain: "NuimoDFUUpdateManager", code: 4, userInfo: [NSLocalizedDescriptionKey: "Cannot update Nuimo", NSLocalizedFailureReasonErrorKey: "Nuimo is not connected"]))
+            return
+        }
+        dfuInitiator = DFUServiceInitiator(centralManager: centralManager, target: peripheral).then {
             $0.logger           = self // Fixes https://github.com/NordicSemiconductor/IOS-Pods-DFU-Library/issues/14
             $0.delegate         = self
             $0.progressDelegate = self
