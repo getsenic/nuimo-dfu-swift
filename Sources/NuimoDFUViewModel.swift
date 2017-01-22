@@ -88,7 +88,7 @@ extension NuimoDFUViewModel {
 
     fileprivate func didFailWithError(_ error: Error) {
         step = .error
-        delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(error.localizedDescription)\n\((error as? LocalizedError)?.failureReason ?? "")")
+        delegate?.nuimoDFUViewModel(self, didUpdateStatusText: "\(error.localizedDescription)\n\((error as NSError).localizedFailureReason ?? "")")
     }
 }
 
