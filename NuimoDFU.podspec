@@ -19,7 +19,7 @@ Pod::Spec.new do |s|
   s.framework    = 'CoreBluetooth'
   s.source_files = "Sources/*.swift"
 
-  s.dependency 'Alamofire',     '~> 4.2.0'
+  s.dependency 'Alamofire',     '~> 4.4.0'
   s.dependency 'iOSDFULibrary', '~> 3.0.3'
   s.dependency 'NuimoSwift',    '~> 0.8.0'
   s.dependency 'Then',          '~> 2.1.0'
